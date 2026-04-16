@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Toko - Fix Auto Save</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #e5ddd5; padding: 20px; margin: 0; }
+        .wrapper { max-width: 1200px; margin: auto; display: flex; flex-wrap: wrap; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); flex: 1; min-width: 450px; }
+        h2 { color: #075e54; border-bottom: 2px solid #25d366; padding-bottom: 10px; margin: 0 0 15px 0; }
+        .section { margin-bottom: 15px; padding: 12px; border: 1px solid #f0f0f0; border-radius: 5px; background: #fff; }
+        .section-title { font-weight: bold; color: #128c7e; font-size: 13px; margin-bottom: 12px; display: block; text-transform: uppercase; border-left: 3px solid #25d366; padding-left: 8px; }
+        .lbl-main { display: block; font-size: 11px; margin-bottom: 4px; color: #444; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        input:read-only { background-color: #f9f9f9; border: 1px dashed #ccc; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .sub-menu { background: #fcfcfc; border: 1px solid #eee; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        #preview-container { background: #fff; position: sticky; top: 20px; height: fit-content; border-left: 5px solid #25d366; max-height: 95vh; overflow-y: auto; }
+        pre { white-space: pre-wrap; font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.4; color: #333; margin: 0; padding: 10px; }
+        .btn-copy { background: #25d366; color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-reset { background: #e74c3c; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 12px; cursor: pointer; float: right; margin-top: -40px; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <div class="card">
+        <h2>Input Data Laporan</h2>
+        <button class="btn-reset" onclick="resetData()">Hapus Semua Data (Reset)</button>
+        
+        <div class="section">
+            <span class="section-title">1. Header & Received</span>
+            <div class="grid-2">
+                <div><label class="lbl-main">Store Name</label><input type="text" id="in_store" placeholder="JC1014 XLUN"></div>
+                <div><label class="lbl-main">Date Report</label><input type="text" id="in_date" placeholder="Rabu, 25 Maret 2026"></div>
+                <div><label class="lbl-main">Phy Stock Level</label><input type="text" id="in_phy" placeholder="107%"></div>
+                <div><label class="lbl-main">Value (Rp)</label><input type="text" id="in_rec_val" placeholder="117.724.586" oninput="formatCurrency(this)"></div>
+                <div><label class="lbl-main">Date Received</label><input type="text" id="in_rec_date" placeholder="15/03/2026"></div>
+                <div><label class="lbl-main">Time Received</label><input type="text" id="in_rec_time" placeholder="18.57" onblur="addWIB(this)"></div>
+            </div>
+            <textarea id="in_rec_ctn" rows="1" placeholder="Qty ctn received..."></textarea>
+            <textarea id="in_ib_erp" rows="1" placeholder="Status IB by ERP..."></textarea>
+            <textarea id="in_upload_do" rows="1" placeholder="Date Upload DO..."></textarea>
+        </div>
+
+        <div class="section">
+            <span class="section-title">2. Progress Display</span>
+            <div class="grid-4">
+                <div><label class="lbl-main">Hari Ini</label><input type="text" id="disp_1" placeholder="0"></div>
+                <div><label class="lbl-main">Total</label><input type="text" id="disp_2" placeholder="0"></div>
+                <div><label class="lbl-main">Sisa</label><input type="text" id="disp_3" placeholder="0"></div>
+                <div><label class="lbl-main">Target (tgl)</label><input type="text" id="disp_4" placeholder="01/02/2026"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-title">3. KS Display Area</span>
+            <div class="grid-4">
+                <div><label class="lbl-main">TOTAL</label><div class="grid-2"><input type="text" id="ks1_t_c" placeholder="Ctn"><input type="text" id="ks1_t_s" placeholder="Sku"></div></div>
+                <div><label class="lbl-main">TAMBAH</label><div class="grid-2"><input type="text" id="ks1_p_c" placeholder="Ctn"><input type="text" id="ks1_p_s" placeholder="Sku"></div></div>
+                <div><label class="lbl-main">TURUN</label><div class="grid-2"><input type="text" id="ks1_m_c" placeholder="Ctn"><input type="text" id="ks1_m_s" placeholder="Sku"></div></div>
+                <div><label class="lbl-main">SISA</label><div class="grid-2"><input type="text" id="ks1_s_c" readonly placeholder="0"><input type="text" id="ks1_s_s" readonly placeholder="0"></div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-title">4. KS Rec Area</span>
+            <div class="grid-4">
+                <div><label class="lbl-main">TOTAL</label><div class="grid-2"><input type="text" id="ks2_t_c" placeholder="Ctn"><input type="text" id="ks2_t_s" placeholder="Sku"></div></div>
+                <div><label class="lbl-main">TAMBAH</label><div class="grid-2"><input type="text" id="ks2_p_c" placeholder="Ctn"><input type="text" id="ks2_p_s" placeholder="Sku"></div></div>
+                <div><label class="lbl-main">TURUN</label><div class="grid-2"><input type="text" id="ks2_m_c" placeholder="Ctn"><input type="text" id="ks2_m_s" placeholder="Sku"></div></div>
+                <div><label class="lbl-main">SISA</label><div class="grid-2"><input type="text" id="ks2_s_c" readonly placeholder="0"><input type="text" id="ks2_s_s" readonly placeholder="0"></div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-title">5. Keep Rec Season</span>
+            <div class="grid-3">
+                <div><label class="lbl-main">CNY (Ctn)</label><input type="text" id="in_cny" placeholder="0"></div>
+                <div><label class="lbl-main">Natal (Ctn)</label><input type="text" id="in_natal" placeholder="0"></div>
+                <div><label class="lbl-main">Raya (Ctn)</label><input type="text" id="in_raya" placeholder="0"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-title">6. Keep Rec Assignment & NFS</span>
+            <div class="sub-menu"><div class="grid-2" style="grid-template-columns: 1fr 2fr;"><div><label class="lbl-main">SNI (Qty)</label><input type="text" id="in_sni_qty" placeholder="0"></div><div><label class="lbl-main">Detail SNI</label><textarea id="in_sni_detail" rows="1" placeholder="Rincian..."></textarea></div></div></div>
+            <div class="sub-menu"><div class="grid-2" style="grid-template-columns: 1fr 2fr;"><div><label class="lbl-main">K3L (Qty)</label><input type="text" id="in_k3l_qty" placeholder="0"></div><div><label class="lbl-main">Detail K3L</label><textarea id="in_k3l_detail" rows="1" placeholder="Rincian..."></textarea></div></div></div>
+            <div class="sub-menu"><div class="grid-2" style="grid-template-columns: 1fr 2fr;"><div><label class="lbl-main">ARN (Qty)</label><input type="text" id="in_arn_qty" placeholder="0"></div><div><label class="lbl-main">Detail ARN</label><textarea id="in_arn_detail" rows="1" placeholder="Rincian..."></textarea></div></div></div>
+            <div class="sub-menu"><div class="grid-2" style="grid-template-columns: 1fr 2fr;"><div><label class="lbl-main">SCB/SRD (Qty)</label><input type="text" id="in_scb_qty" placeholder="0"></div><div><label class="lbl-main">Detail SCB/SRD</label><textarea id="in_scb_detail" rows="1" placeholder="Rincian..."></textarea></div></div></div>
+            <div class="sub-menu"><div class="grid-2" style="grid-template-columns: 1fr 2fr;"><div><label class="lbl-main">NFS (Qty)</label><input type="text" id="in_nfs_qty" placeholder="0"></div><div><label class="lbl-main">Detail NFS</label><textarea id="in_nfs_detail" rows="1" placeholder="Rincian..."></textarea></div></div></div>
+        </div>
+
+        <button class="btn-copy" onclick="copyReport()">SALIN LAPORAN KE WHATSAPP</button>
+    </div>
+
+    <div class="card" id="preview-container">
+        <h2 style="font-size: 16px;">Preview Laporan</h2>
+        <pre id="realtime_preview"></pre>
+    </div>
+</div>
+
+<script>
+    // 1. Format Rupiah Otomatis
+    function formatCurrency(input) {
+        let value = input.value.replace(/\D/g, "");
+        if (value !== "") {
+            input.value = new Intl.NumberFormat('id-ID').format(value);
+        }
+        updatePreview();
+    }
+
+    // 2. Auto WIB
+    function addWIB(input) {
+        let val = input.value.trim();
+        if (val !== "" && !val.toUpperCase().includes("WIB")) {
+            input.value = val + " WIB";
+        }
+        updatePreview();
+    }
+
+    // 3. Fungsi Utama Auto Save & Preview
+    function updatePreview() {
+        // Hitung Otomatis KS
+        const calc = (t, p, m) => (parseInt(document.getElementById(t).value)||0) + (parseInt(document.getElementById(p).value)||0) - (parseInt(document.getElementById(m).value)||0);
+        
+        document.getElementById('ks1_s_c').value = calc('ks1_t_c', 'ks1_p_c', 'ks1_m_c');
+        document.getElementById('ks1_s_s').value = calc('ks1_t_s', 'ks1_p_s', 'ks1_m_s');
+        document.getElementById('ks2_s_c').value = calc('ks2_t_c', 'ks2_p_c', 'ks2_m_c');
+        document.getElementById('ks2_s_s').value = calc('ks2_t_s', 'ks2_p_s', 'ks2_m_s');
+
+        const v = (id) => document.getElementById(id).value || "-";
+        const vd = (id) => document.getElementById(id).value.trim();
+
+        // Teks Laporan
+        let reportText = `Store Name : ${v('in_store')}
+Date : ${v('in_date')}
+Scanning by QTA
+Phy Stock Level : ${v('in_phy')}
+
+Received :
+Date received : ${v('in_rec_date')}
+Time : ${v('in_rec_time')}
+Value : Rp ${v('in_rec_val')}
+
+Qty ctn received : ${v('in_rec_ctn')}
+Status IB by ERP : ${v('in_ib_erp')}
+Date Upload DO : ${v('in_upload_do')}
+
+Progress Display
+Display hari ini : ${v('disp_1')}
+Total terdisplay : ${v('disp_2')}
+Sisa belum terdisplay : ${v('disp_3')}
+Target selesai display : ${v('disp_4')}
+
+Keep Stock
+1. KS Display Area
+Total KS : ${v('ks1_t_c')} ctn / ${v('ks1_t_s')} sku
+Penambahan : ${v('ks1_p_c')} ctn / ${v('ks1_p_s')} sku
+Diturunkan : ${v('ks1_m_c')} ctn / ${v('ks1_m_s')} sku
+Sisa KS : ${v('ks1_s_c')} ctn / ${v('ks1_s_s')} sku
+
+2. KS Rec Area
+Total KS : ${v('ks2_t_c')} ctn / ${v('ks2_t_s')} sku
+Penambahan : ${v('ks2_p_c')} ctn / ${v('ks2_p_s')} sku
+Diturunkan : ${v('ks2_m_c')} ctn / ${v('ks2_m_s')} sku
+Sisa KS : ${v('ks2_s_c')} ctn / ${v('ks2_s_s')} sku
+
+3. Keep Rec Season
+CNY : ${v('in_cny')} ctn
+Natal : ${v('in_natal')} ctn
+Raya : ${v('in_raya')} ctn
+
+4. Keep Rec Assignment
+SNI : ${v('in_sni_qty')} ctn${vd('in_sni_detail') ? '\n' + vd('in_sni_detail') : ''}
+K3L : ${v('in_k3l_qty')} ctn${vd('in_k3l_detail') ? '\n' + vd('in_k3l_detail') : ''}
+ARN : ${v('in_arn_qty')} ctn${vd('in_arn_detail') ? '\n' + vd('in_arn_detail') : ''}
+SCB/SRD : ${v('in_scb_qty')} ctn${vd('in_scb_detail') ? '\n' + vd('in_scb_detail') : ''}
+
+Not For Sale : ${v('in_nfs_qty')} Ctn${vd('in_nfs_detail') ? '\n' + vd('in_nfs_detail') : ''}
+
+Terima kasih`;
+
+        document.getElementById('realtime_preview').innerText = reportText;
+
+        // PROSES SIMPAN KE MEMORI (LocalStorage)
+        const allInputs = document.querySelectorAll('input, textarea');
+        allInputs.forEach(input => {
+            localStorage.setItem('LAPORAN_TOKO_KEY_' + input.id, input.value);
+        });
+    }
+
+    // 4. Muat Data Saat Halaman Dibuka
+    window.onload = function() {
+        const allInputs = document.querySelectorAll('input, textarea');
+        allInputs.forEach(input => {
+            const saved = localStorage.getItem('LAPORAN_TOKO_KEY_' + input.id);
+            if (saved !== null) {
+                input.value = saved;
+            }
+            // Pasang event listener ke setiap kotak
+            input.addEventListener('input', updatePreview);
+        });
+        updatePreview();
+    };
+
+    // 5. Reset Data
+    function resetData() {
+        if(confirm("Hapus permanen semua data di memori?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+
+    // 6. Copy ke Clipboard
+    function copyReport() {
+        const text = document.getElementById('realtime_preview').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("✅ Berhasil Disalin!");
+        }).catch(() => {
+            // Backup jika navigator.clipboard gagal
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            alert("✅ Berhasil Disalin!");
+        });
+    }
+</script>
+
+</body>
+</html>
